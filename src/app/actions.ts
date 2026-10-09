@@ -215,6 +215,7 @@ export async function createTaskAction(formData: FormData) {
     });
 
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/tasks");
     return { success: true, task: created };
   } catch (error) {
     console.error("Error creating task:", error);
@@ -228,10 +229,25 @@ export async function updateTaskStatusAction(taskId: string, newStatus: "backlog
   try {
     await db.update(tasks).set({ status: newStatus }).where(eq(tasks.id, taskId));
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/tasks");
     return { success: true };
   } catch (error) {
     console.error("Error updating task status:", error);
     return { success: false, message: "Error al actualizar estado de tarea." };
+  }
+}
+
+export async function deleteTaskAction(taskId: string) {
+  await requireAuth();
+
+  try {
+    await db.delete(tasks).where(eq(tasks.id, taskId));
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/tasks");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    return { success: false, message: "Error al eliminar la tarea." };
   }
 }
 
