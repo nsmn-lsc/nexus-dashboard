@@ -1,0 +1,36 @@
+# ==============================================================================
+# CADDY REVERSE PROXY SNIPPET - NEXUS DASHBOARD (INGRESS: file-node 10.0.0.4)
+# ==============================================================================
+# Añadir en /etc/caddy/Caddyfile o /etc/caddy/conf.d/nexus.caddy en file-node
+
+nexus.filenode.dev {
+    # Proxy inverso apuntando al puerto 8090 de app-node en la LAN privada (10.0.0.0/24)
+    reverse_proxy 10.0.0.2:8090 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        
+        # Buffering deshabilitado para Server Actions fluidos y streaming
+        flush_interval -1
+    }
+
+    # Cabeceras de seguridad táctica (Cyberpunk Ops Security)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Compresión moderna
+    encode zstd gzip
+
+    # Log de accesos estructurado
+    log {
+        output file /var/log/caddy/nexus_access.log {
+            roll_size 50mb
+            roll_keep 5
+        }
+    }
+}
