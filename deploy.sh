@@ -64,9 +64,19 @@ if [ -d "$APP_DIR" ]; then
 fi
 
 echo "-> [6/6] Reiniciando servicio systemd en app-node..."
-if command -v systemctl &>/dev/null && systemctl list-unit-files | grep -q "nexus-dashboard.service"; then
-    systemctl restart nexus-dashboard.service
-    echo ">> Servicio nexus-dashboard.service reiniciado."
+if command -v systemctl &>/dev/null && ([ -f "/etc/systemd/system/nexus-dashboard.service" ] || systemctl list-units --full --all | grep -Fq "nexus-dashboard.service"); then
+    echo ">> Deteniendo servicio anterior para liberación limpia del puerto ${PORT}..."
+    systemctl stop nexus-dashboard.service || true
+    sleep 1
+
+    # Asegurar liberación de socket en caso de procesos huérfanos
+    if command -v fuser &>/dev/null; then
+        fuser -k "${PORT}/tcp" || true
+    fi
+
+    systemctl daemon-reload
+    systemctl start nexus-dashboard.service
+    echo ">> Servicio nexus-dashboard.service iniciado exitosamente."
 else
     echo ">> [INFO] systemctl no disponible o servicio no instalado todavía. Omitiendo restart directo."
 fi
@@ -74,16 +84,24 @@ fi
 echo "============================================================"
 echo " [✓] EJECUTANDO HEALTHCHECK TÁCTICO (http://${NODE_IP}:${PORT})"
 echo "============================================================"
-sleep 2
+echo ">> Esperando inicialización del runtime (hasta 15s)..."
 
+HEALTH_STATUS="FAIL"
 if command -v curl &>/dev/null; then
-    HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${NODE_IP}:${PORT}/login" || echo "FAIL")
+    for i in {1..15}; do
+        HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://${NODE_IP}:${PORT}/login" || echo "FAIL")
+        if [[ "$HEALTH_STATUS" =~ ^(200|307|308)$ ]]; then
+            break
+        fi
+        sleep 1
+    done
+
     if [[ "$HEALTH_STATUS" =~ ^(200|307|308)$ ]]; then
         echo ">> [OK] NEXUS DASHBOARD EN LÍNEA Y OPERATIVO (HTTP $HEALTH_STATUS)."
     else
         echo ">> [ADVERTENCIA] El endpoint respondió: $HEALTH_STATUS. Inspeccionando registros recientes:"
         if command -v journalctl &>/dev/null; then
-            journalctl -u nexus-dashboard.service -n 20 --no-pager || true
+            journalctl -u nexus-dashboard.service -n 25 --no-pager || true
         fi
     fi
 else
