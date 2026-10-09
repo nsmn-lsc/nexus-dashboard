@@ -6,6 +6,7 @@ import { HudBadge } from "@/components/hud/HudBadge";
 import { HudButton } from "@/components/hud/HudButton";
 import { Server, Network, FolderKanban, ListTodo, Shield, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { CreateProjectModal } from "@/components/hud/CreateProjectModal";
 
 export default async function DashboardPage() {
   // Carga de telemetría directamente del modelo relacional desacoplado
@@ -26,7 +27,8 @@ export default async function DashboardPage() {
             Telemetría de nodos Hetzner, puertos asignados y proyectos en ejecución.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <CreateProjectModal />
           <HudBadge variant="cyan">NODOS HETZNER: {allNodes.length}</HudBadge>
           <HudBadge variant="green" pulse>
             SERVICIOS ACTIVOS: {allServices.length}
@@ -98,9 +100,18 @@ export default async function DashboardPage() {
               PROYECTOS VINCULADOS
             </h2>
           </div>
-          <span className="text-xs font-mono text-slate-400">
-            TOTAL: {allProjects.length}
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/projects"
+              className="text-xs font-mono text-hud-cyan hover:underline flex items-center gap-1"
+            >
+              <span>VER CATÁLOGO COMPLETO</span>
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+            <span className="text-xs font-mono text-slate-500">
+              TOTAL: {allProjects.length}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -115,7 +126,14 @@ export default async function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-panel-border/20">
-              {allProjects.map((p) => (
+              {allProjects.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-slate-500 font-mono text-xs">
+                    No hay proyectos registrados en el sistema. Utiliza el botón de arriba para registrar uno.
+                  </td>
+                </tr>
+              ) : (
+                allProjects.map((p) => (
                 <tr key={p.id} className="hover:bg-panel-light/60 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="font-semibold text-slate-200">{p.name}</div>
@@ -149,7 +167,8 @@ export default async function DashboardPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

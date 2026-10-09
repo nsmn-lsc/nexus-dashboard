@@ -26,9 +26,23 @@ export default async function ProjectsIndexPage() {
         <CreateProjectModal />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {allProjects.map((proj) => {
-          const serviceCount = allServices.filter((s) => s.projectId === proj.id).length;
+      {allProjects.length === 0 ? (
+        <HudCard className="p-12 text-center space-y-4">
+          <FolderKanban className="w-10 h-10 text-slate-600 mx-auto" />
+          <div className="font-mono text-sm text-slate-300">
+            NO HAY PROYECTOS REGISTRADOS EN LA FLOTA
+          </div>
+          <p className="font-mono text-xs text-slate-500 max-w-md mx-auto">
+            Registra tu primer proyecto de software para comenzar a mapear puertos, tareas, bitácoras operativas y despliegues.
+          </p>
+          <div className="pt-2">
+            <CreateProjectModal />
+          </div>
+        </HudCard>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {allProjects.map((proj) => {
+            const serviceCount = allServices.filter((s) => s.projectId === proj.id).length;
 
           return (
             <HudCard key={proj.id} className="flex flex-col justify-between space-y-4">
@@ -93,6 +107,7 @@ export default async function ProjectsIndexPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

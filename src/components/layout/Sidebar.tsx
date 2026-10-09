@@ -13,10 +13,12 @@ import {
   ChevronLeft,
   ChevronRight,
   TerminalSquare,
+  LayoutDashboard,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "PROYECTOS", href: "/dashboard", icon: FolderKanban },
+  { label: "ESTADO GLOBAL", href: "/dashboard", icon: LayoutDashboard },
+  { label: "PROYECTOS", href: "/dashboard/projects", icon: FolderKanban },
   { label: "MATRIZ DE PUERTOS", href: "/dashboard/ports", icon: Network },
   { label: "NODOS HETZNER", href: "/dashboard/nodes", icon: Server },
   { label: "SUBSISTEMA WEBHOOKS", href: "/dashboard/webhooks", icon: TerminalSquare },
