@@ -17,8 +17,8 @@ import {
 
 const NAV_ITEMS = [
   { label: "PROYECTOS", href: "/dashboard", icon: FolderKanban },
+  { label: "MATRIZ DE PUERTOS", href: "/dashboard/ports", icon: Network },
   { label: "NODOS HETZNER", href: "/dashboard/nodes", icon: Server },
-  { label: "PUERTOS & MAPEO", href: "/dashboard/services", icon: Network },
   { label: "TAREAS & SPRINTS", href: "/dashboard/tasks", icon: ListTodo },
   { label: "DEVLOGS", href: "/dashboard/devlogs", icon: FileCode2 },
 ];
