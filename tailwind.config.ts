@@ -12,8 +12,8 @@ const config: Config = {
         background: "#090d16",
         void: "#090d16",
         panel: {
-          DEFAULT: "#0d1322",
-          light: "#121a2e",
+          DEFAULT: "rgba(13, 19, 34, 0.78)",
+          light: "rgba(18, 26, 46, 0.85)",
           border: "rgba(0, 243, 255, 0.2)",
         },
         hud: {
