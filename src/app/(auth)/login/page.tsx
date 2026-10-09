@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { HudCard } from "@/components/hud/HudCard";
@@ -9,39 +8,36 @@ import { HudInput } from "@/components/hud/HudInput";
 import { HudButton } from "@/components/hud/HudButton";
 import { HudBadge } from "@/components/hud/HudBadge";
 import { ShieldAlert, Terminal, Lock, Cpu } from "lucide-react";
+import { loginAction } from "@/app/auth-actions";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage(null);
 
-    try {
-      const res = await signIn("credentials", {
-        username,
-        password,
-        redirect: false,
-        callbackUrl,
-      });
+    const formData = new FormData(e.currentTarget);
+    formData.set("callbackUrl", callbackUrl);
 
-      if (!res || res.error) {
-        setErrorMessage("Credenciales de autenticación no autorizadas o inválidas.");
-      } else {
-        router.push(callbackUrl);
-        router.refresh();
+    try {
+      const res = await loginAction(formData);
+      if (!res.success) {
+        setErrorMessage(res.error || "Credenciales de autenticación no autorizadas.");
+        setIsLoading(false);
       }
-    } catch {
-      setErrorMessage("Fallo de enlace de red táctico. Intente de nuevo.");
-    } finally {
+    } catch (err: unknown) {
+      // Si Next.js redirige (NEXT_REDIRECT), dejamos que la navegación ocurra
+      if (err && typeof err === "object" && "message" in err && (err as { message: string }).message.includes("NEXT_REDIRECT")) {
+        return;
+      }
+      setErrorMessage("Error de conexión durante el enlace.");
       setIsLoading(false);
     }
   };
@@ -122,11 +118,11 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <HudInput
+                name="username"
                 id="username"
                 label="Identificador de Operador (Usuario / Email)"
                 placeholder="admin o admin@nexus.internal"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                defaultValue="admin"
                 required
                 autoComplete="username"
               />
@@ -134,12 +130,11 @@ function LoginForm() {
 
             <div className="space-y-1">
               <HudInput
+                name="password"
                 id="password"
                 type="password"
                 label="Clave de Enlace Táctico"
                 placeholder="••••••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
               />
