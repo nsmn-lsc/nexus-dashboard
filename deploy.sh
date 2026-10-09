@@ -4,9 +4,10 @@ set -euo pipefail
 # ==============================================================================
 # NEXUS DASHBOARD - SCRIPT DE DESPLIEGUE TÁCTICO AUTOMATIZADO
 # Target: app-node (10.0.0.2:8090) en Hetzner Private LAN (10.0.0.0/24)
+# Entorno: /opt/apps/nexus-dashboard | Usuario de ejecución: root
 # ==============================================================================
 
-APP_DIR="/opt/nexus-dashboard"
+APP_DIR="${APP_DIR:-/opt/apps/nexus-dashboard}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 NODE_IP="10.0.0.2"
 PORT="8090"
@@ -51,15 +52,15 @@ fi
 mkdir -p .next/standalone/.next
 cp -r .next/static .next/standalone/.next/
 
-# Asegurar permisos correctos para el usuario www-data si estamos en el servidor de producción
-if id "www-data" &>/dev/null && [ -d "$APP_DIR" ]; then
-    echo ">> Asignando permisos de propiedad a www-data:www-data..."
-    chown -R www-data:www-data "$APP_DIR" || true
+# Asegurar permisos correctos para root en /opt/apps/nexus-dashboard
+if [ -d "$APP_DIR" ]; then
+    echo ">> Asegurando permisos de propiedad para root:root en ${APP_DIR}..."
+    chown -R root:root "$APP_DIR" || true
 fi
 
 echo "-> [6/6] Reiniciando servicio systemd en app-node..."
 if command -v systemctl &>/dev/null && systemctl list-unit-files | grep -q "nexus-dashboard.service"; then
-    sudo systemctl restart nexus-dashboard.service
+    systemctl restart nexus-dashboard.service
     echo ">> Servicio nexus-dashboard.service reiniciado."
 else
     echo ">> [INFO] systemctl no disponible o servicio no instalado todavía. Omitiendo restart directo."
@@ -77,7 +78,7 @@ if command -v curl &>/dev/null; then
     else
         echo ">> [ADVERTENCIA] El endpoint respondió: $HEALTH_STATUS. Inspeccionando registros recientes:"
         if command -v journalctl &>/dev/null; then
-            sudo journalctl -u nexus-dashboard.service -n 20 --no-pager || true
+            journalctl -u nexus-dashboard.service -n 20 --no-pager || true
         fi
     fi
 else

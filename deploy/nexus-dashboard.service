@@ -5,26 +5,19 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/opt/nexus-dashboard
-EnvironmentFile=/opt/nexus-dashboard/.env.production
+User=root
+Group=root
+WorkingDirectory=/opt/apps/nexus-dashboard
+EnvironmentFile=/opt/apps/nexus-dashboard/.env.production
 
 # Ejecución del bundle standalone generado por Next.js en puerto 8090
-ExecStart=/usr/bin/node /opt/nexus-dashboard/.next/standalone/server.js
+ExecStart=/usr/bin/node /opt/apps/nexus-dashboard/.next/standalone/server.js
 
 Restart=always
 RestartSec=5s
 KillMode=process
 
-# Sandboxing y Seguridad Linux
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=full
-ProtectHome=true
-CapabilityBoundingSet=
-
-# Límites de descriptores y memoria
+# Límites de descriptores y memoria en servidor Linux
 LimitNOFILE=65535
 MemoryMax=1G
 
