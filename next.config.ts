@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   output: "standalone",
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;

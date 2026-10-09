@@ -40,14 +40,25 @@ const sslOption =
     ? { rejectUnauthorized: false }
     : false;
 
+declare global {
+  // eslint-disable-next-line no-var
+  var _postgresClient: postgres.Sql | undefined;
+}
+
 // Cliente de bajo nivel postgres.js con pool sizing desacoplado
-const client = postgres(rawDatabaseUrl, {
-  max: maxConnections,
-  idle_timeout: idleTimeout,
-  connect_timeout: connectTimeout,
-  ssl: sslOption,
-  prepare: false, // Recomendado para compatibilidad con PgBouncer / Proxies si se escala
-});
+const client =
+  globalThis._postgresClient ??
+  postgres(rawDatabaseUrl, {
+    max: maxConnections,
+    idle_timeout: idleTimeout,
+    connect_timeout: connectTimeout,
+    ssl: sslOption,
+    prepare: false, // Recomendado para compatibilidad con PgBouncer / Proxies si se escala
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis._postgresClient = client;
+}
 
 export const db = drizzle(client, { schema });
 export { client };
