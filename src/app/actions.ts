@@ -1,11 +1,12 @@
 "use server";
 
 import { db } from "@/db";
-import { projects, projectServices, tasks, devlogs } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { projects, projectServices, tasks, devlogs, webhookEndpoints, webhookDeliveries } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { dispatchWebhook, generateWebhookSecret } from "@/lib/webhooks";
 
 // Validación de sesión
 async function requireAuth() {
@@ -56,6 +57,15 @@ export async function createProjectAction(formData: FormData) {
         description: parsed.data.description || null,
       })
       .returning();
+
+    // Disparar evento de despliegue/creación
+    await dispatchWebhook("project.created", {
+      projectId: created.id,
+      name: created.name,
+      slug: created.slug,
+      type: created.type,
+      status: created.status,
+    });
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/projects");
@@ -111,6 +121,15 @@ export async function createServiceAction(formData: FormData) {
       })
       .returning();
 
+    // Notificar cambio/adición de servicio
+    await dispatchWebhook("service.status_change", {
+      serviceId: created.id,
+      projectId: created.projectId,
+      nodeId: created.nodeId,
+      port: created.port,
+      status: created.status,
+    });
+
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/ports");
     revalidatePath("/dashboard/services");
@@ -118,6 +137,38 @@ export async function createServiceAction(formData: FormData) {
   } catch (error) {
     console.error("Error creating service:", error);
     return { success: false, message: "Error al mapear servicio y puerto." };
+  }
+}
+
+export async function updateServiceStatusAction(
+  serviceId: string,
+  newStatus: "running" | "stopped" | "failed"
+) {
+  await requireAuth();
+
+  try {
+    const [updated] = await db
+      .update(projectServices)
+      .set({ status: newStatus })
+      .where(eq(projectServices.id, serviceId))
+      .returning();
+
+    if (updated) {
+      await dispatchWebhook("service.status_change", {
+        serviceId: updated.id,
+        projectId: updated.projectId,
+        nodeId: updated.nodeId,
+        port: updated.port,
+        status: updated.status,
+      });
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/ports");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating service status:", error);
+    return { success: false, message: "Error al actualizar estado del servicio." };
   }
 }
 
@@ -155,6 +206,13 @@ export async function createTaskAction(formData: FormData) {
         description: parsed.data.description || null,
       })
       .returning();
+
+    await dispatchWebhook("task.created", {
+      taskId: created.id,
+      projectId: created.projectId,
+      title: created.title,
+      priority: created.priority,
+    });
 
     revalidatePath("/dashboard");
     return { success: true, task: created };
@@ -205,11 +263,120 @@ export async function createDevlogAction(formData: FormData) {
       .values(parsed.data)
       .returning();
 
+    await dispatchWebhook("devlog.entry", {
+      devlogId: created.id,
+      projectId: created.projectId,
+      title: created.title,
+    });
+
     revalidatePath("/dashboard/devlogs");
     revalidatePath("/dashboard");
     return { success: true, devlog: created };
   } catch (error) {
     console.error("Error creating devlog:", error);
     return { success: false, message: "Error al registrar entrada en la bitácora." };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 5. WEBHOOK MANAGEMENT ACTIONS
+// -----------------------------------------------------------------------------
+const webhookEndpointSchema = z.object({
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  type: z.enum(["inbound", "outbound"]),
+  url: z.string().min(2, "La URL o slug es requerido"),
+  secret: z.string().min(8, "El secret debe tener al menos 8 caracteres"),
+  events: z.array(z.string()).min(1, "Debe seleccionar al menos un evento"),
+  isActive: z.boolean().default(true),
+});
+
+export async function createWebhookEndpointAction(formData: FormData) {
+  await requireAuth();
+
+  const eventsRaw = formData.getAll("events") as string[];
+  const rawData = {
+    name: formData.get("name"),
+    type: formData.get("type"),
+    url: formData.get("url"),
+    secret: formData.get("secret") || generateWebhookSecret(),
+    events: eventsRaw.length > 0 ? eventsRaw : ["service.status_change"],
+    isActive: formData.get("isActive") === "true",
+  };
+
+  const parsed = webhookEndpointSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { success: false, errors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    const [created] = await db
+      .insert(webhookEndpoints)
+      .values(parsed.data)
+      .returning();
+
+    revalidatePath("/dashboard/webhooks");
+    return { success: true, endpoint: created };
+  } catch (error) {
+    console.error("Error creating webhook endpoint:", error);
+    return { success: false, message: "Error al crear el endpoint del webhook." };
+  }
+}
+
+export async function toggleWebhookEndpointAction(endpointId: string, currentState: boolean) {
+  await requireAuth();
+
+  try {
+    await db
+      .update(webhookEndpoints)
+      .set({ isActive: !currentState })
+      .where(eq(webhookEndpoints.id, endpointId));
+
+    revalidatePath("/dashboard/webhooks");
+    return { success: true };
+  } catch (error) {
+    console.error("Error toggling webhook endpoint:", error);
+    return { success: false, message: "Error al alternar estado del webhook." };
+  }
+}
+
+export async function triggerTestWebhookAction(endpointId: string) {
+  await requireAuth();
+
+  try {
+    const endpoint = await db.query.webhookEndpoints.findFirst({
+      where: eq(webhookEndpoints.id, endpointId),
+    });
+
+    if (!endpoint) {
+      return { success: false, message: "Endpoint no encontrado." };
+    }
+
+    const testPayload = {
+      event: "test.ping",
+      timestamp: new Date().toISOString(),
+      origin: "Nexus Tactical Dashboard",
+      message: "Prueba de enlace y firma criptográfica HMAC SHA-256.",
+    };
+
+    if (endpoint.type === "outbound") {
+      const res = await dispatchWebhook("test.ping", testPayload);
+      revalidatePath("/dashboard/webhooks");
+      return { success: true, result: res };
+    } else {
+      // Registrar prueba simulada de recepción
+      await db.insert(webhookDeliveries).values({
+        endpointId: endpoint.id,
+        eventType: "test.ping",
+        payload: testPayload,
+        statusCode: 200,
+        responseBody: "Prueba inbound simulada con éxito",
+        status: "success",
+      });
+      revalidatePath("/dashboard/webhooks");
+      return { success: true };
+    }
+  } catch (error) {
+    console.error("Error triggering test webhook:", error);
+    return { success: false, message: "Fallo en la prueba de webhook." };
   }
 }
