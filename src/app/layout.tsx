@@ -17,6 +17,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Nexus Dashboard // Tactical Project Controller",
   description: "Centro de comando y control de proyectos, puertos e infraestructura Hetzner",
+  icons: {
+    icon: "/nexus-icon.png",
+    shortcut: "/nexus-icon.png",
+    apple: "/nexus-icon.png",
+  },
 };
 
 export default function RootLayout({
