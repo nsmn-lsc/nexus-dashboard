@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, boolean, jsonb, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // -----------------------------------------------------------------------------
@@ -18,6 +18,9 @@ export const serviceStatusEnum = pgEnum("service_status", ["running", "stopped",
 
 export const taskPriorityEnum = pgEnum("task_priority", ["p1", "p2", "p3", "p4"]);
 export const taskStatusEnum = pgEnum("task_status", ["backlog", "in_progress", "review", "done"]);
+
+export const webhookTypeEnum = pgEnum("webhook_type", ["inbound", "outbound"]);
+export const webhookDeliveryStatusEnum = pgEnum("webhook_delivery_status", ["success", "failed", "pending"]);
 
 // -----------------------------------------------------------------------------
 // TABLAS
@@ -89,6 +92,30 @@ export const devlogs = pgTable("devlogs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// 7. Webhook Endpoints (Inbound & Outbound)
+export const webhookEndpoints = pgTable("webhook_endpoints", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  type: webhookTypeEnum("type").default("inbound").notNull(),
+  url: text("url").notNull(), // Endpoint slug para inbound o destino URL para outbound
+  secret: text("secret").notNull(), // HMAC SHA-256 secret
+  events: jsonb("events").$type<string[]>().default([]).notNull(), // ['service.status_change', 'deploy.finished', etc.]
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// 8. Webhook Deliveries (Auditoría e historial de entregas)
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  endpointId: uuid("endpoint_id").references(() => webhookEndpoints.id, { onDelete: "cascade" }).notNull(),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  statusCode: integer("status_code"),
+  responseBody: text("response_body"),
+  status: webhookDeliveryStatusEnum("status").default("pending").notNull(),
+  executedAt: timestamp("executed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // -----------------------------------------------------------------------------
 // RELACIONES DRIZZLE
 // -----------------------------------------------------------------------------
@@ -124,5 +151,16 @@ export const devlogsRelations = relations(devlogs, ({ one }) => ({
   project: one(projects, {
     fields: [devlogs.projectId],
     references: [projects.id],
+  }),
+}));
+
+export const webhookEndpointsRelations = relations(webhookEndpoints, ({ many }) => ({
+  deliveries: many(webhookDeliveries),
+}));
+
+export const webhookDeliveriesRelations = relations(webhookDeliveries, ({ one }) => ({
+  endpoint: one(webhookEndpoints, {
+    fields: [webhookDeliveries.endpointId],
+    references: [webhookEndpoints.id],
   }),
 }));
