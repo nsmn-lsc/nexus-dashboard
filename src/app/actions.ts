@@ -522,3 +522,32 @@ export async function triggerTestWebhookAction(endpointId: string) {
     return { success: false, message: "Fallo en la prueba de webhook." };
   }
 }
+
+export async function deleteWebhookEndpointAction(endpointId: string) {
+  await requireAuth();
+
+  try {
+    await db
+      .delete(webhookEndpoints)
+      .where(eq(webhookEndpoints.id, endpointId));
+
+    revalidatePath("/dashboard/webhooks");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting webhook endpoint:", error);
+    return { success: false, message: "Error al eliminar el endpoint de webhook." };
+  }
+}
+
+export async function clearWebhookDeliveriesAction() {
+  await requireAuth();
+
+  try {
+    await db.delete(webhookDeliveries);
+    revalidatePath("/dashboard/webhooks");
+    return { success: true };
+  } catch (error) {
+    console.error("Error clearing webhook deliveries:", error);
+    return { success: false, message: "Error al limpiar la bitácora de entregas de webhooks." };
+  }
+}

@@ -5,8 +5,23 @@ import { HudCard } from "@/components/hud/HudCard";
 import { HudBadge } from "@/components/hud/HudBadge";
 import { HudButton } from "@/components/hud/HudButton";
 import { CreateWebhookModal } from "@/components/hud/CreateWebhookModal";
-import { toggleWebhookEndpointAction, triggerTestWebhookAction } from "@/app/actions";
-import { Radio, Send, Activity, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { 
+  toggleWebhookEndpointAction, 
+  triggerTestWebhookAction,
+  deleteWebhookEndpointAction,
+  clearWebhookDeliveriesAction,
+} from "@/app/actions";
+import { 
+  Radio, 
+  Send, 
+  Activity, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  ChevronDown, 
+  ChevronUp,
+  Trash2,
+} from "lucide-react";
 
 interface EndpointItem {
   id: string;
@@ -42,6 +57,8 @@ export function WebhooksManagerClient({
 }: WebhooksManagerClientProps) {
   const [isPending, startTransition] = useTransition();
   const [expandedDeliveryId, setExpandedDeliveryId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmClearLogs, setConfirmClearLogs] = useState(false);
 
   const handleToggleActive = (endpoint: EndpointItem) => {
     startTransition(async () => {
@@ -52,6 +69,20 @@ export function WebhooksManagerClient({
   const handleTestPing = (endpointId: string) => {
     startTransition(async () => {
       await triggerTestWebhookAction(endpointId);
+    });
+  };
+
+  const handleDeleteEndpoint = (endpointId: string) => {
+    startTransition(async () => {
+      await deleteWebhookEndpointAction(endpointId);
+      setConfirmDeleteId(null);
+    });
+  };
+
+  const handleClearDeliveries = () => {
+    startTransition(async () => {
+      await clearWebhookDeliveriesAction();
+      setConfirmClearLogs(false);
     });
   };
 
@@ -118,14 +149,45 @@ export function WebhooksManagerClient({
               </div>
 
               <div className="pt-3 border-t border-panel-border/30 flex items-center justify-between gap-2">
-                <HudButton
-                  variant="ghost"
-                  className="text-xs p-1 hover:text-white"
-                  onClick={() => handleToggleActive(ep)}
-                  disabled={isPending}
-                >
-                  {ep.isActive ? "DESACTIVAR" : "ACTIVAR"}
-                </HudButton>
+                <div className="flex items-center gap-2">
+                  <HudButton
+                    variant="ghost"
+                    className="text-xs p-1 hover:text-white"
+                    onClick={() => handleToggleActive(ep)}
+                    disabled={isPending}
+                  >
+                    {ep.isActive ? "DESACTIVAR" : "ACTIVAR"}
+                  </HudButton>
+
+                  {confirmDeleteId === ep.id ? (
+                    <div className="flex items-center gap-1 font-mono text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEndpoint(ep.id)}
+                        disabled={isPending}
+                        className="bg-hud-magenta/20 text-hud-magenta border border-hud-magenta/50 px-2 py-0.5 font-bold hover:bg-hud-magenta hover:text-white transition-colors"
+                      >
+                        CONFIRMAR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-slate-400 hover:text-white px-1"
+                      >
+                        CANCELAR
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(ep.id)}
+                      className="p-1 text-slate-500 hover:text-hud-magenta transition-colors"
+                      title="Eliminar Endpoint Webhook"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
                 <HudButton
                   variant="secondary"
@@ -144,16 +206,49 @@ export function WebhooksManagerClient({
 
       {/* Log de Auditoría e Historial de Entregas */}
       <HudCard className="p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-panel-border/30 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-panel-border/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-hud-cyan" />
             <h2 className="font-rajdhani font-bold text-lg text-white">
               AUDIT LOG // HISTORIAL DE ENTREGAS & RECEPCIÓN
             </h2>
           </div>
-          <span className="text-xs font-mono text-slate-400">
-            TOTAL ENTRADAS: {deliveries.length}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-slate-400">
+              TOTAL ENTRADAS: {deliveries.length}
+            </span>
+            {deliveries.length > 0 && (
+              confirmClearLogs ? (
+                <div className="flex items-center gap-1 font-mono text-xs">
+                  <button
+                    type="button"
+                    onClick={handleClearDeliveries}
+                    disabled={isPending}
+                    className="bg-hud-magenta/20 text-hud-magenta border border-hud-magenta/50 px-2 py-0.5 font-bold hover:bg-hud-magenta hover:text-white transition-colors"
+                  >
+                    ¿VACIAR BITÁCORA?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClearLogs(false)}
+                    className="text-slate-400 hover:text-white px-1"
+                  >
+                    CANCELAR
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearLogs(true)}
+                  className="inline-flex items-center gap-1 text-xs font-mono text-slate-400 hover:text-hud-magenta transition-colors px-2 py-0.5 border border-panel-border/30 hover:border-hud-magenta/40"
+                  title="Limpiar todas las entregas de prueba"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>LIMPIAR HISTORIAL</span>
+                </button>
+              )
+            )}
+          </div>
         </div>
 
         {deliveries.length === 0 ? (
