@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { HudCard } from "@/components/hud/HudCard";
 import { HudButton } from "@/components/hud/HudButton";
 import { HudInput } from "@/components/hud/HudInput";
@@ -11,6 +12,11 @@ export function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -35,8 +41,8 @@ export function CreateProjectModal() {
         <span>NUEVO PROYECTO</span>
       </HudButton>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      {isOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <HudCard className="w-full max-w-lg space-y-4">
             <div className="flex items-center justify-between border-b border-panel-border/30 pb-3">
               <div className="flex items-center gap-2">
@@ -142,7 +148,8 @@ export function CreateProjectModal() {
               </div>
             </form>
           </HudCard>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

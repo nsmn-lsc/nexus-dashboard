@@ -24,7 +24,7 @@ export function NodesClient({ initialNodes }: NodesClientProps) {
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedProvider, setSelectedProvider] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>(" ");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Filtrado reactivo en vivo
   const filteredNodes = useMemo(() => {
