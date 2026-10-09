@@ -52,15 +52,15 @@ Wants=network-online.target
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/nexus-dashboard
-EnvironmentFile=/opt/nexus-dashboard/.env.production
+WorkingDirectory=/opt/apps/nexus-dashboard
+EnvironmentFile=/opt/apps/nexus-dashboard/.env.production
 
 # Ejecución del bundle standalone generado por Next.js
-ExecStart=/usr/bin/node /opt/nexus-dashboard/.next/standalone/server.js
+ExecStart=/usr/bin/node /opt/apps/nexus-dashboard/.next/standalone/server.js
 
 Restart=always
-RestartSec=5s
-KillMode=process
+RestartSec=3s
+KillMode=control-group
 
 # Sandboxing y Seguridad Linux
 NoNewPrivileges=true
