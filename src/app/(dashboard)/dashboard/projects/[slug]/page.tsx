@@ -8,6 +8,7 @@ import { HudBadge } from "@/components/hud/HudBadge";
 import { CopyCommand } from "@/components/hud/CopyCommand";
 import { TaskList } from "@/components/hud/TaskList";
 import { MarkdownViewer } from "@/components/hud/MarkdownViewer";
+import { ProjectCommandsCard } from "@/components/hud/ProjectCommandsCard";
 import { CreateServiceModal } from "@/components/hud/CreateServiceModal";
 import { CreateDevlogModal } from "@/components/hud/CreateDevlogModal";
 import {
@@ -128,6 +129,10 @@ export default async function ProjectDetailsPage({ params }: ProjectDetailsPageP
               <span className="text-hud-cyan uppercase">{project.type}</span>
             </div>
             <div className="flex justify-between border-b border-panel-border/20 pb-1.5">
+              <span className="text-slate-500">FRAMEWORK / STACK:</span>
+              <span className="text-hud-cyan font-bold uppercase">{project.framework || "django"}</span>
+            </div>
+            <div className="flex justify-between border-b border-panel-border/20 pb-1.5">
               <span className="text-slate-500">RAMA PRINCIPAL:</span>
               <span className="text-slate-300 flex items-center gap-1">
                 <GitBranch className="w-3 h-3 text-hud-yellow" />
@@ -147,42 +152,12 @@ export default async function ProjectDetailsPage({ params }: ProjectDetailsPageP
           </div>
         </HudCard>
 
-        {/* Columna Derecha (2 cols): Quick Commands */}
-        <HudCard className="lg:col-span-2 space-y-4">
-          <div className="flex items-center gap-2 border-b border-panel-border/30 pb-2">
-            <Terminal className="w-4 h-4 text-hud-cyan" />
-            <h2 className="font-rajdhani font-bold text-base text-white">
-              COMANDOS RÁPIDOS // CLI SHORTCUTS
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <CopyCommand
-              label="Arranque Desarrollo Local"
-              command="npm run dev"
-            />
-            <CopyCommand
-              label="Verificar Tipos y Build"
-              command="npm run build"
-            />
-            <CopyCommand
-              label="Migraciones Drizzle ORM"
-              command="npx drizzle-kit push"
-            />
-            <CopyCommand
-              label="Reinicio Servicio Systemd (Hetzner)"
-              command={`sudo systemctl restart ${project.slug}`}
-            />
-            <CopyCommand
-              label="Logs en Vivo (Journalctl)"
-              command={`journalctl -u ${project.slug} -f -n 50`}
-            />
-            <CopyCommand
-              label="Inspección de Puertos Activos"
-              command="ss -tulpn | grep LISTEN"
-            />
-          </div>
-        </HudCard>
+        {/* Columna Derecha (2 cols): Quick Commands con soporte Multi-Stack (Django, FastAPI, Node, Docker, Ops) */}
+        <ProjectCommandsCard
+          projectId={project.id}
+          projectSlug={project.slug}
+          initialFramework={project.framework}
+        />
       </div>
 
       {/* Servicios Vinculados y Mapeo de Puertos */}

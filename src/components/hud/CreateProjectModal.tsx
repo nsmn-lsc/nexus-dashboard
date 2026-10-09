@@ -93,7 +93,24 @@ export function CreateProjectModal() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-mono font-medium tracking-wider text-hud-cyan uppercase mb-1.5">
+                    STACK / TECH
+                  </label>
+                  <select
+                    name="framework"
+                    defaultValue="django"
+                    className="w-full bg-[#070b12] text-slate-200 border border-panel-border/40 px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-hud-cyan"
+                  >
+                    <option value="django">DJANGO (PY)</option>
+                    <option value="fastapi">FASTAPI (PY)</option>
+                    <option value="node">NODE / NEXT</option>
+                    <option value="docker">DOCKER</option>
+                    <option value="generic">GENÉRICO</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-mono font-medium tracking-wider text-slate-400 uppercase mb-1.5">
                     TIPO
@@ -101,7 +118,7 @@ export function CreateProjectModal() {
                   <select
                     name="type"
                     defaultValue="personal"
-                    className="w-full bg-[#070b12] text-slate-200 border border-panel-border/40 px-3 py-2 font-mono text-xs focus:outline-none focus:border-hud-cyan"
+                    className="w-full bg-[#070b12] text-slate-200 border border-panel-border/40 px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-hud-cyan"
                   >
                     <option value="laboral">LABORAL</option>
                     <option value="personal">PERSONAL</option>
@@ -116,10 +133,10 @@ export function CreateProjectModal() {
                   <select
                     name="status"
                     defaultValue="active"
-                    className="w-full bg-[#070b12] text-slate-200 border border-panel-border/40 px-3 py-2 font-mono text-xs focus:outline-none focus:border-hud-cyan"
+                    className="w-full bg-[#070b12] text-slate-200 border border-panel-border/40 px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-hud-cyan"
                   >
                     <option value="active">ACTIVE</option>
-                    <option value="maintenance">MAINTENANCE</option>
+                    <option value="maintenance">MAINT</option>
                     <option value="paused">PAUSED</option>
                   </select>
                 </div>

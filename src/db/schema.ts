@@ -43,6 +43,7 @@ export const projects = pgTable("projects", {
   slug: text("slug").notNull().unique(),
   description: text("description"),
   type: projectTypeEnum("type").default("personal").notNull(),
+  framework: text("framework").default("django"),
   repoUrl: text("repo_url"),
   defaultBranch: text("default_branch").default("main"),
   status: projectStatusEnum("status").default("active").notNull(),

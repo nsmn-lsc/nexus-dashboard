@@ -25,6 +25,7 @@ const projectSchema = z.object({
   slug: z.string().min(2, "El slug debe ser válido").regex(/^[a-z0-9-]+$/, "Slug en minúsculas y guiones"),
   description: z.string().optional(),
   type: z.enum(["laboral", "personal", "infra"]),
+  framework: z.string().default("django"),
   repoUrl: z.string().url("URL de repositorio inválida").optional().or(z.literal("")),
   defaultBranch: z.string().default("main"),
   status: z.enum(["active", "maintenance", "paused"]),
@@ -38,6 +39,7 @@ export async function createProjectAction(formData: FormData) {
     slug: formData.get("slug"),
     description: formData.get("description"),
     type: formData.get("type"),
+    framework: formData.get("framework") || "django",
     repoUrl: formData.get("repoUrl"),
     defaultBranch: formData.get("defaultBranch") || "main",
     status: formData.get("status") || "active",
@@ -73,6 +75,22 @@ export async function createProjectAction(formData: FormData) {
   } catch (error) {
     console.error("Error creating project:", error);
     return { success: false, message: "Error al registrar proyecto en base de datos." };
+  }
+}
+
+export async function updateProjectFrameworkAction(projectId: string, framework: string) {
+  await requireAuth();
+  try {
+    await db
+      .update(projects)
+      .set({ framework, updatedAt: new Date() })
+      .where(eq(projects.id, projectId));
+    revalidatePath("/dashboard/projects");
+    revalidatePath(`/dashboard/projects/[slug]`, "page");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating project framework:", error);
+    return { success: false, message: "Error al actualizar stack del proyecto." };
   }
 }
 

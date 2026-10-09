@@ -48,9 +48,14 @@ export default async function ProjectsIndexPage() {
             <HudCard key={proj.id} className="flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-hud-cyan uppercase tracking-wider px-2 py-0.5 border border-hud-cyan/30 bg-hud-cyan/10">
-                    {proj.type}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-hud-cyan uppercase tracking-wider px-2 py-0.5 border border-hud-cyan/30 bg-hud-cyan/10">
+                      {proj.type}
+                    </span>
+                    <span className="text-[10px] font-mono text-hud-yellow uppercase tracking-wider px-2 py-0.5 border border-hud-yellow/30 bg-hud-yellow/10">
+                      {proj.framework || "django"}
+                    </span>
+                  </div>
                   <HudBadge
                     variant={proj.status === "active" ? "green" : "yellow"}
                     pulse={proj.status === "active"}

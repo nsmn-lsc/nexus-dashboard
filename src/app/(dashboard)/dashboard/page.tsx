@@ -119,7 +119,7 @@ export default async function DashboardPage() {
             <thead className="bg-[#0b101c] text-slate-400 border-b border-panel-border/20 uppercase tracking-wider">
               <tr>
                 <th className="px-5 py-3 font-medium">Nombre / Slug</th>
-                <th className="px-5 py-3 font-medium">Tipo</th>
+                <th className="px-5 py-3 font-medium">Tipo / Stack</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
                 <th className="px-5 py-3 font-medium">Rama</th>
                 <th className="px-5 py-3 font-medium text-right">Acción</th>
@@ -140,7 +140,12 @@ export default async function DashboardPage() {
                     <div className="text-[11px] text-slate-500">{p.slug}</div>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className="text-hud-cyan uppercase">{p.type}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-hud-cyan uppercase">{p.type}</span>
+                      <span className="text-[10px] text-hud-yellow border border-hud-yellow/30 bg-hud-yellow/10 px-1.5 py-0.5 uppercase">
+                        {p.framework || "django"}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-5 py-3.5">
                     <HudBadge
