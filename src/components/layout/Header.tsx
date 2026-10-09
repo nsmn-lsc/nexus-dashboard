@@ -1,14 +1,23 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import React, { useEffect, useState, useTransition } from "react";
 import { HudBadge } from "@/components/hud/HudBadge";
 import { HudButton } from "@/components/hud/HudButton";
-import { Activity, Clock, LogOut, Server, ShieldCheck } from "lucide-react";
+import { Clock, LogOut, Server, ShieldCheck } from "lucide-react";
+import { logoutAction } from "@/app/auth-actions";
 
-export function Header() {
-  const { data: session } = useSession();
+interface HeaderProps {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  } | null;
+}
+
+export function Header({ user }: HeaderProps) {
   const [utcTime, setUtcTime] = useState<string>("");
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const updateTime = () => {
@@ -19,6 +28,12 @@ export function Header() {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      await logoutAction();
+    });
+  };
 
   return (
     <header className="h-14 border-b border-panel-border/30 bg-panel/90 backdrop-blur-md px-4 flex items-center justify-between sticky top-0 z-30">
@@ -52,18 +67,18 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-hud-cyan" />
           <span className="text-slate-300">
-            {session?.user?.name || "OPERATOR"}
+            {user?.name || "ADMIN"}
           </span>
           <span className="text-[10px] text-hud-cyan uppercase px-1.5 py-0.5 border border-hud-cyan/30 bg-hud-cyan/10">
-            {/* @ts-expect-error Custom session role */}
-            {session?.user?.role || "ADMIN"}
+            {user?.role || "ADMIN"}
           </span>
         </div>
 
         <HudButton
           variant="ghost"
           className="p-1.5 hover:text-hud-magenta"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={handleLogout}
+          disabled={isPending}
           title="Cerrar enlace"
         >
           <LogOut className="w-4 h-4" />

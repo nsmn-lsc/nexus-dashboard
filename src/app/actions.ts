@@ -5,7 +5,7 @@ import { projects, projectServices, tasks, devlogs, webhookEndpoints, webhookDel
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/session";
 import { dispatchWebhook, generateWebhookSecret } from "@/lib/webhooks";
 
 // Validación de sesión

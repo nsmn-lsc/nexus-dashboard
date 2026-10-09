@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-// Rutas protegidas que requieren token de sesión activo
 const PROTECTED_PREFIXES = ["/dashboard", "/api/projects", "/api/nodes"];
 
-export function middleware(request: NextRequest) {
+const SECRET_KEY = new TextEncoder().encode(
+  process.env.AUTH_SECRET || "nexus_super_secret_jwt_key_fallback_minimum_32_characters"
+);
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -13,13 +17,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Comprobar cookies de sesión de Auth.js
-  const sessionTokenProd = request.cookies.get("__Secure-authjs.session-token");
-  const sessionTokenDev = request.cookies.get("authjs.session-token");
-  const hasValidSession = Boolean(sessionTokenProd || sessionTokenDev);
+  // Comprobar cookies de sesión nativas y retrocompatibles
+  const sessionToken =
+    request.cookies.get("__Secure-nexus.session-token")?.value ||
+    request.cookies.get("nexus.session-token")?.value ||
+    request.cookies.get("__Secure-authjs.session-token")?.value ||
+    request.cookies.get("authjs.session-token")?.value;
 
-  if (!hasValidSession) {
-    // Si es petición API protegida, retornar 401 JSON
+  let isValid = false;
+
+  if (sessionToken) {
+    try {
+      await jwtVerify(sessionToken, SECRET_KEY);
+      isValid = true;
+    } catch {
+      isValid = false;
+    }
+  }
+
+  if (!isValid) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Acceso no autorizado. Credenciales de sesión requeridas." },
@@ -27,7 +43,6 @@ export function middleware(request: NextRequest) {
       );
     }
 
-    // Si es acceso web, redirigir a /login guardando la ruta callback
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
