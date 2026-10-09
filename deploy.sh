@@ -38,6 +38,11 @@ else
 fi
 
 echo "-> [3/6] Sincronizando esquema de base de datos en db-node (10.0.0.3:5432)..."
+if [ -f ".env.production" ]; then
+    set -a
+    source .env.production
+    set +a
+fi
 npm run db:push
 
 echo "-> [4/6] Compilando bundle standalone optimizado de Next.js..."
