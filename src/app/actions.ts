@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { projects, projectServices, tasks, devlogs, webhookEndpoints, webhookDeliveries } from "@/db/schema";
+import { projects, nodes, projectServices, tasks, devlogs, webhookEndpoints, webhookDeliveries } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -165,10 +165,118 @@ export async function updateServiceStatusAction(
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/ports");
+    revalidatePath("/dashboard/nodes");
     return { success: true };
   } catch (error) {
     console.error("Error updating service status:", error);
     return { success: false, message: "Error al actualizar estado del servicio." };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 2.1. NODE ACTIONS
+// -----------------------------------------------------------------------------
+const nodeSchema = z.object({
+  name: z.string().min(2, "El nombre del nodo debe tener al menos 2 caracteres"),
+  hostIp: z.string().min(3, "La IP o Host es requerida"),
+  privateIp: z.string().optional().or(z.literal("")),
+  role: z.enum(["app", "db", "storage", "local"]),
+  provider: z.enum(["hetzner", "local"]),
+  status: z.enum(["online", "offline", "unreachable"]),
+});
+
+export async function createNodeAction(formData: FormData) {
+  await requireAuth();
+
+  const rawData = {
+    name: formData.get("name"),
+    hostIp: formData.get("hostIp"),
+    privateIp: formData.get("privateIp") || "",
+    role: formData.get("role") || "app",
+    provider: formData.get("provider") || "hetzner",
+    status: formData.get("status") || "online",
+  };
+
+  const parsed = nodeSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return { success: false, errors: parsed.error.flatten().fieldErrors };
+  }
+
+  try {
+    const [created] = await db
+      .insert(nodes)
+      .values({
+        name: parsed.data.name,
+        hostIp: parsed.data.hostIp,
+        privateIp: parsed.data.privateIp || null,
+        role: parsed.data.role,
+        provider: parsed.data.provider,
+        status: parsed.data.status,
+      })
+      .returning();
+
+    await dispatchWebhook("node.created", {
+      nodeId: created.id,
+      name: created.name,
+      hostIp: created.hostIp,
+      provider: created.provider,
+      status: created.status,
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/nodes");
+    revalidatePath("/dashboard/ports");
+    return { success: true, node: created };
+  } catch (error) {
+    console.error("Error creating node:", error);
+    return { success: false, message: "Error al registrar el nodo en la infraestructura." };
+  }
+}
+
+export async function updateNodeStatusAction(
+  nodeId: string,
+  newStatus: "online" | "offline" | "unreachable"
+) {
+  await requireAuth();
+
+  try {
+    const [updated] = await db
+      .update(nodes)
+      .set({ status: newStatus })
+      .where(eq(nodes.id, nodeId))
+      .returning();
+
+    if (updated) {
+      await dispatchWebhook("node.status_change", {
+        nodeId: updated.id,
+        name: updated.name,
+        status: updated.status,
+      });
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/nodes");
+    revalidatePath("/dashboard/ports");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating node status:", error);
+    return { success: false, message: "Error al actualizar estado del nodo." };
+  }
+}
+
+export async function deleteNodeAction(nodeId: string) {
+  await requireAuth();
+
+  try {
+    await db.delete(nodes).where(eq(nodes.id, nodeId));
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/nodes");
+    revalidatePath("/dashboard/ports");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting node:", error);
+    return { success: false, message: "Error al eliminar el nodo de la infraestructura." };
   }
 }
 

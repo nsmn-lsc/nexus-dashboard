@@ -55,6 +55,7 @@ export const nodes = pgTable("nodes", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull().unique(),
   hostIp: text("host_ip").notNull(),
+  privateIp: text("private_ip"),
   role: nodeRoleEnum("role").default("app").notNull(),
   provider: nodeProviderEnum("provider").default("hetzner").notNull(),
   status: nodeStatusEnum("status").default("online").notNull(),
