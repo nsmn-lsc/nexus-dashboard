@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
@@ -11,11 +12,27 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="flex flex-col min-h-screen bg-[#090d16]">
-        {/* Header Táctico */}
-        <Header />
+      <div className="relative flex flex-col min-h-screen bg-[#070b12] overflow-hidden">
+        {/* Fondo Ambiental Táctico Cyberpunk con Mezcla de Gradientes */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <Image
+            src="/nexus-ambient-bg.jpg"
+            alt="Nexus Ambient HUD Background"
+            fill
+            className="object-cover opacity-20 filter contrast-125"
+            priority
+          />
+          {/* Overlay de desvanecimiento para garantizar contraste supremo */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#070b12]/85 via-[#070b12]/90 to-[#070b12]/95" />
+          <div className="absolute inset-0 hud-grid opacity-60" />
+        </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        {/* Header Táctico */}
+        <div className="relative z-30">
+          <Header />
+        </div>
+
+        <div className="relative z-10 flex flex-1 overflow-hidden">
           {/* Sidebar colapsable */}
           <Sidebar />
 
