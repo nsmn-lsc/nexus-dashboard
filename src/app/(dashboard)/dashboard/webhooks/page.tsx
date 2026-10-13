@@ -25,7 +25,7 @@ export default async function WebhooksPage() {
     .from(webhookDeliveries)
     .innerJoin(webhookEndpoints, eq(webhookDeliveries.endpointId, webhookEndpoints.id))
     .orderBy(desc(webhookDeliveries.executedAt))
-    .limit(50);
+    .limit(200);
 
   return (
     <WebhooksManagerClient

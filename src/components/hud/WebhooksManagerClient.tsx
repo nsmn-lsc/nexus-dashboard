@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useMemo } from "react";
 import { HudCard } from "@/components/hud/HudCard";
 import { HudBadge } from "@/components/hud/HudBadge";
 import { HudButton } from "@/components/hud/HudButton";
@@ -21,6 +21,10 @@ import {
   ChevronDown, 
   ChevronUp,
   Trash2,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface EndpointItem {
@@ -59,6 +63,67 @@ export function WebhooksManagerClient({
   const [expandedDeliveryId, setExpandedDeliveryId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClearLogs, setConfirmClearLogs] = useState(false);
+
+  // Estados de Paginación y Filtrado Táctico
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [statusFilter, setStatusFilter] = useState<"all" | "success" | "failed">("all");
+  const [endpointFilter, setEndpointFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Métricas rápidas de entregas
+  const successCount = useMemo(
+    () => deliveries.filter((d) => d.status === "success").length,
+    [deliveries]
+  );
+  const failedCount = useMemo(
+    () => deliveries.filter((d) => d.status === "failed").length,
+    [deliveries]
+  );
+
+  // Filtrado reactivo en cliente
+  const filteredDeliveries = useMemo(() => {
+    return deliveries.filter((del) => {
+      if (statusFilter !== "all" && del.status !== statusFilter) return false;
+      if (endpointFilter !== "all" && del.endpointId !== endpointFilter) return false;
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase().trim();
+        const matchType = del.eventType.toLowerCase().includes(q);
+        const matchName = del.endpointName.toLowerCase().includes(q);
+        const matchStatus = (del.statusCode?.toString() || "").includes(q);
+        if (!matchType && !matchName && !matchStatus) return false;
+      }
+      return true;
+    });
+  }, [deliveries, statusFilter, endpointFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredDeliveries.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedDeliveries = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filteredDeliveries.slice(start, start + pageSize);
+  }, [filteredDeliveries, safePage, pageSize]);
+
+  const handleStatusFilterChange = (status: "all" | "success" | "failed") => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  const handleEndpointFilterChange = (epId: string) => {
+    setEndpointFilter(epId);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   const handleToggleActive = (endpoint: EndpointItem) => {
     startTransition(async () => {
@@ -251,13 +316,115 @@ export function WebhooksManagerClient({
           </div>
         </div>
 
+        {/* Barra de Filtros Tácticos & Control de Paginación */}
+        {deliveries.length > 0 && (
+          <div className="bg-[#070b13] px-5 py-3 border-b border-panel-border/20 flex flex-col lg:flex-row lg:items-center justify-between gap-3 font-mono text-xs">
+            {/* Buscador y Filtro por Endpoint */}
+            <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar evento, endpoint o HTTP status..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full bg-[#0a0f1d] text-slate-200 border border-panel-border/30 pl-8 pr-2.5 py-1.5 text-xs focus:outline-none focus:border-hud-cyan placeholder:text-slate-600"
+                />
+              </div>
+
+              {endpoints.length > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 text-[11px] hidden sm:inline">ORIGEN:</span>
+                  <select
+                    value={endpointFilter}
+                    onChange={(e) => handleEndpointFilterChange(e.target.value)}
+                    className="bg-[#0a0f1d] text-slate-300 border border-panel-border/30 px-2 py-1.5 text-xs focus:outline-none focus:border-hud-cyan"
+                  >
+                    <option value="all">TODOS LOS ENDPOINTS</option>
+                    {endpoints.map((ep) => (
+                      <option key={ep.id} value={ep.id}>
+                        {ep.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Pestañas de Estado & Selector de Densidad */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Botones de Estado */}
+              <div className="flex items-center border border-panel-border/30 bg-[#0a0f1d] p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleStatusFilterChange("all")}
+                  className={`px-2.5 py-1 text-[11px] transition-colors ${
+                    statusFilter === "all"
+                      ? "bg-hud-cyan/20 text-hud-cyan font-bold border border-hud-cyan/40"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  TODOS ({deliveries.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusFilterChange("failed")}
+                  className={`px-2.5 py-1 text-[11px] transition-colors ${
+                    statusFilter === "failed"
+                      ? "bg-hud-magenta/20 text-hud-magenta font-bold border border-hud-magenta/40"
+                      : "text-slate-400 hover:text-hud-magenta"
+                  }`}
+                >
+                  FALLIDOS ({failedCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusFilterChange("success")}
+                  className={`px-2.5 py-1 text-[11px] transition-colors ${
+                    statusFilter === "success"
+                      ? "bg-hud-green/20 text-hud-green font-bold border border-hud-green/40"
+                      : "text-slate-400 hover:text-hud-green"
+                  }`}
+                >
+                  EXITOSOS ({successCount})
+                </button>
+              </div>
+
+              {/* Selector de Densidad por Página */}
+              <div className="flex items-center gap-1 text-[11px] text-slate-400 ml-auto lg:ml-0">
+                <span className="hidden sm:inline">VER:</span>
+                {[10, 25, 50].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => handlePageSizeChange(size)}
+                    className={`px-2 py-0.5 border text-[11px] font-mono transition-colors ${
+                      pageSize === size
+                        ? "border-hud-cyan text-hud-cyan bg-hud-cyan/15 font-bold shadow-[0_0_8px_rgba(0,243,255,0.2)]"
+                        : "border-panel-border/30 text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de Entregas Paginadas con Scroll HUD Controlado */}
         {deliveries.length === 0 ? (
           <div className="p-8 text-center font-mono text-xs text-slate-500">
             NO HAY EVENTOS O ENTREGAS REGISTRADAS EN LA BITÁCORA DE WEBHOOKS.
           </div>
+        ) : filteredDeliveries.length === 0 ? (
+          <div className="p-8 text-center font-mono text-xs text-slate-500 space-y-1">
+            <div className="text-slate-400 font-bold">SIN COINCIDENCIAS</div>
+            <div>No se encontraron entregas que coincidan con los filtros aplicados.</div>
+          </div>
         ) : (
-          <div className="divide-y divide-panel-border/20 font-mono text-xs">
-            {deliveries.map((del) => {
+          <div className="divide-y divide-panel-border/20 font-mono text-xs max-h-[600px] overflow-y-auto">
+            {paginatedDeliveries.map((del) => {
               const isExpanded = expandedDeliveryId === del.id;
               const isSuccess = del.status === "success";
 
@@ -325,6 +492,54 @@ export function WebhooksManagerClient({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Footer Táctico de Paginación */}
+        {filteredDeliveries.length > 0 && (
+          <div className="bg-[#070b13] px-5 py-3 border-t border-panel-border/20 flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs text-slate-400">
+            <div>
+              MOSTRANDO{" "}
+              <span className="text-white font-bold">
+                {(safePage - 1) * pageSize + 1}
+              </span>{" "}
+              -{" "}
+              <span className="text-white font-bold">
+                {Math.min(safePage * pageSize, filteredDeliveries.length)}
+              </span>{" "}
+              DE{" "}
+              <span className="text-hud-cyan font-bold">
+                {filteredDeliveries.length}
+              </span>{" "}
+              EVENTOS
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="px-2.5 py-1 border border-panel-border/40 bg-[#0a0f1d] text-slate-300 hover:border-hud-cyan hover:text-hud-cyan disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>ANTERIOR</span>
+              </button>
+
+              <span className="px-3 py-1 bg-[#0a0f1d] border border-panel-border/30 text-slate-300">
+                PÁGINA <span className="text-hud-cyan font-bold">{safePage}</span> DE{" "}
+                <span className="text-slate-200 font-bold">{totalPages}</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                className="px-2.5 py-1 border border-panel-border/40 bg-[#0a0f1d] text-slate-300 hover:border-hud-cyan hover:text-hud-cyan disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1"
+              >
+                <span>SIGUIENTE</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </HudCard>
