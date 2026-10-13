@@ -38,6 +38,7 @@ export default async function NodesPage() {
     role: n.role,
     provider: n.provider,
     status: n.status,
+    lastHeartbeat: n.last_heartbeat ? n.last_heartbeat.toISOString() : null,
     services: allServices
       .filter((s) => s.nodeId === n.id)
       .map((s) => ({

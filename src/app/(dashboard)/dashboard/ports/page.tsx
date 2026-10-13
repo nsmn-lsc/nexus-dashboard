@@ -21,12 +21,30 @@ export default async function PortsPage() {
       nodeName: nodes.name,
       nodeHostIp: nodes.hostIp,
       nodeProvider: nodes.provider,
+      nodeLastHeartbeat: nodes.last_heartbeat,
     })
     .from(projectServices)
     .innerJoin(projects, eq(projectServices.projectId, projects.id))
     .innerJoin(nodes, eq(projectServices.nodeId, nodes.id));
 
-  const allNodes = await db.select({ id: nodes.id, name: nodes.name }).from(nodes);
+  const allNodes = await db
+    .select({
+      id: nodes.id,
+      name: nodes.name,
+      lastHeartbeat: nodes.last_heartbeat,
+    })
+    .from(nodes);
+
+  const formattedServices: PortMatrixItem[] = rawServices.map((s) => ({
+    ...s,
+    nodeLastHeartbeat: s.nodeLastHeartbeat ? s.nodeLastHeartbeat.toISOString() : null,
+  }));
+
+  const formattedNodes = allNodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    lastHeartbeat: n.lastHeartbeat ? n.lastHeartbeat.toISOString() : null,
+  }));
 
   return (
     <div className="space-y-6">
@@ -40,8 +58,8 @@ export default async function PortsPage() {
       </div>
 
       <PortMatrixClient
-        services={rawServices as PortMatrixItem[]}
-        nodes={allNodes}
+        services={formattedServices}
+        nodes={formattedNodes}
       />
     </div>
   );

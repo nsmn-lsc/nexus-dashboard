@@ -39,7 +39,73 @@ export interface NodeItem {
   role: "app" | "db" | "storage" | "local";
   provider: "hetzner" | "local";
   status: "online" | "offline" | "unreachable";
+  lastHeartbeat?: Date | string | null;
   services: NodeServiceItem[];
+}
+
+function getHeartbeatInfo(lastHeartbeat: Date | string | null | undefined) {
+  if (!lastHeartbeat) {
+    return {
+      status: "none" as const,
+      label: "SIN TELEMETRÍA",
+      detail: "En espera de nexus-heartbeat.sh",
+      dateFormatted: null,
+      isRecent: false,
+    };
+  }
+
+  const date = new Date(lastHeartbeat);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+
+  const dateFormatted = date.toLocaleString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+
+  if (diffMin < 3) {
+    return {
+      status: "active" as const,
+      label: "LATIDO ACTIVO",
+      detail: diffSec < 60 ? `Hace ${diffSec}s` : `Hace ${diffMin}m`,
+      dateFormatted,
+      isRecent: true,
+    };
+  }
+
+  if (diffMin < 10) {
+    return {
+      status: "delayed" as const,
+      label: "LATIDO RECIENTE",
+      detail: `Hace ${diffMin}m`,
+      dateFormatted,
+      isRecent: true,
+    };
+  }
+
+  if (diffHours < 24) {
+    return {
+      status: "stale" as const,
+      label: "SEÑAL DEMORADA",
+      detail: `Hace ${diffHours}h`,
+      dateFormatted,
+      isRecent: false,
+    };
+  }
+
+  return {
+    status: "inactive" as const,
+    label: "DESCONECTADO",
+    detail: `Hace ${Math.floor(diffHours / 24)}d`,
+    dateFormatted,
+    isRecent: false,
+  };
 }
 
 interface NodeCardProps {
@@ -103,6 +169,7 @@ export function NodeCard({ node }: NodeCardProps) {
   };
 
   const sshCommand = `ssh root@${node.hostIp}`;
+  const heartbeat = getHeartbeatInfo(node.lastHeartbeat);
 
   return (
     <HudCard
@@ -152,6 +219,52 @@ export function NodeCard({ node }: NodeCardProps) {
             label="Acceso Táctico SSH"
             command={sshCommand}
           />
+        </div>
+
+        {/* Telemetría y Latido Táctico (nexus-heartbeat.sh) */}
+        <div className="p-2.5 bg-[#060911] border border-panel-border/40 font-mono text-xs space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity
+                className={cn(
+                  "w-3.5 h-3.5",
+                  heartbeat.status === "active"
+                    ? "text-hud-green animate-pulse"
+                    : heartbeat.status === "delayed"
+                    ? "text-hud-cyan animate-pulse"
+                    : heartbeat.status === "stale"
+                    ? "text-hud-yellow"
+                    : "text-slate-600"
+                )}
+              />
+              <span className="text-[11px] text-slate-400">TELEMETRÍA:</span>
+              <span
+                className={cn(
+                  "text-[10px] font-bold tracking-wider px-1.5 py-0.5 border",
+                  heartbeat.status === "active"
+                    ? "text-hud-green border-hud-green/30 bg-hud-green/10"
+                    : heartbeat.status === "delayed"
+                    ? "text-hud-cyan border-hud-cyan/30 bg-hud-cyan/10"
+                    : heartbeat.status === "stale"
+                    ? "text-hud-yellow border-hud-yellow/30 bg-hud-yellow/10"
+                    : "text-slate-500 border-panel-border/30 bg-panel-dark"
+                )}
+              >
+                {heartbeat.label}
+              </span>
+            </div>
+
+            <span className="text-[11px] font-semibold text-slate-300">
+              {heartbeat.detail}
+            </span>
+          </div>
+
+          {heartbeat.dateFormatted && (
+            <div className="text-[10px] text-slate-500 flex items-center justify-between border-t border-panel-border/20 pt-1">
+              <span>ÚLTIMO LATIDO</span>
+              <span className="text-slate-400">{heartbeat.dateFormatted}</span>
+            </div>
+          )}
         </div>
 
         {/* Lista de Servicios y Procesos Activos en este Nodo */}

@@ -53,7 +53,8 @@ export function NodesClient({ initialNodes }: NodesClientProps) {
     const standby = initialNodes.filter((n) => n.status === "unreachable").length;
     const offline = initialNodes.filter((n) => n.status === "offline").length;
     const totalServices = initialNodes.reduce((acc, n) => acc + n.services.length, 0);
-    return { total, online, standby, offline, totalServices };
+    const withHeartbeat = initialNodes.filter((n) => Boolean(n.lastHeartbeat)).length;
+    return { total, online, standby, offline, totalServices, withHeartbeat };
   }, [initialNodes]);
 
   return (
@@ -81,8 +82,9 @@ export function NodesClient({ initialNodes }: NodesClientProps) {
           <div className="text-3xl font-bold font-rajdhani text-hud-green">
             {metrics.online.toString().padStart(2, "0")}
           </div>
-          <div className="text-[11px] font-mono text-slate-500 mt-1">
-            100% OPERACIONALES
+          <div className="text-[11px] font-mono text-hud-cyan mt-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-hud-green animate-pulse" />
+            <span>{metrics.withHeartbeat} CON TELEMETRÍA ACTIVA</span>
           </div>
         </HudCard>
 

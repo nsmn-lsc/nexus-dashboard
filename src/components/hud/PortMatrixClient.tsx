@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { HudCard } from "@/components/hud/HudCard";
 import { HudBadge } from "@/components/hud/HudBadge";
-import { Network, AlertTriangle, Filter, Server, CheckCircle2 } from "lucide-react";
+import { Network, AlertTriangle, Filter, Server, CheckCircle2, Activity } from "lucide-react";
 import Link from "next/link";
 
 export interface PortMatrixItem {
@@ -20,11 +20,12 @@ export interface PortMatrixItem {
   nodeName: string;
   nodeHostIp: string;
   nodeProvider: "hetzner" | "local";
+  nodeLastHeartbeat?: string | Date | null;
 }
 
 interface PortMatrixClientProps {
   services: PortMatrixItem[];
-  nodes: Array<{ id: string; name: string }>;
+  nodes: Array<{ id: string; name: string; lastHeartbeat?: string | Date | null }>;
 }
 
 export function PortMatrixClient({ services, nodes }: PortMatrixClientProps) {
@@ -57,10 +58,14 @@ export function PortMatrixClient({ services, nodes }: PortMatrixClientProps) {
     return count;
   }, [collisionMap]);
 
+  const nodesWithTelemetry = useMemo(() => {
+    return nodes.filter((n) => Boolean(n.lastHeartbeat)).length;
+  }, [nodes]);
+
   return (
     <div className="space-y-6">
       {/* Resumen de telemetría y Detección de Colisiones */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <HudCard>
           <div className="text-slate-400 font-mono text-xs mb-1">PUERTOS TOTALES</div>
           <div className="text-3xl font-bold font-rajdhani text-white">
@@ -96,6 +101,19 @@ export function PortMatrixClient({ services, nodes }: PortMatrixClientProps) {
             {nodes.length.toString().padStart(2, "0")}
           </div>
           <div className="text-[11px] font-mono text-slate-500 mt-1">HETZNER APP / DB / LOCAL</div>
+        </HudCard>
+
+        <HudCard>
+          <div className="flex items-center justify-between text-slate-400 font-mono text-xs mb-1">
+            <span>TELEMETRÍA // HEARTBEAT</span>
+            <Activity className="w-4 h-4 text-hud-green animate-pulse" />
+          </div>
+          <div className="text-3xl font-bold font-rajdhani text-hud-green">
+            {nodesWithTelemetry.toString().padStart(2, "0")}/{nodes.length.toString().padStart(2, "0")}
+          </div>
+          <div className="text-[11px] font-mono text-hud-cyan mt-1">
+            NODOS SINCRONIZADOS
+          </div>
         </HudCard>
       </div>
 
@@ -205,8 +223,18 @@ export function PortMatrixClient({ services, nodes }: PortMatrixClientProps) {
                         </Link>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="text-slate-200">{srv.nodeName}</div>
+                        <div className="text-slate-200 font-semibold">{srv.nodeName}</div>
                         <div className="text-[11px] text-slate-500">{srv.nodeHostIp}</div>
+                        {srv.nodeLastHeartbeat ? (
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-hud-green font-mono">
+                            <Activity className="w-3 h-3 text-hud-green animate-pulse" />
+                            <span>LATIDO ACTIVO</span>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-600 font-mono mt-0.5">
+                            Sin telemetría
+                          </div>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-slate-400 uppercase">{srv.serviceType}</td>
                       <td className="px-5 py-3.5 text-right">
@@ -226,7 +254,7 @@ export function PortMatrixClient({ services, nodes }: PortMatrixClientProps) {
                             }
                             pulse={srv.status === "running"}
                           >
-                            {srv.status.toUpperCase()}
+                            {srv.status === "running" && srv.nodeLastHeartbeat ? "RUNNING (SYNC)" : srv.status.toUpperCase()}
                           </HudBadge>
                         </div>
                       </td>
