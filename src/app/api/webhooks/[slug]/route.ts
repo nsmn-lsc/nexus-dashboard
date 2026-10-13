@@ -1,11 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { webhookEndpoints, webhookDeliveries, projectServices, devlogs, projects } from "@/db/schema";
+import { webhookEndpoints, webhookDeliveries, projectServices, devlogs, nodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { verifySignature } from "@/lib/webhooks";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
+
+function parseListeningPorts(input: unknown): number[] {
+  if (!input) return [];
+  if (Array.isArray(input)) {
+    return input
+      .map((p) => (typeof p === "number" ? p : parseInt(String(p).trim(), 10)))
+      .filter((p) => !isNaN(p));
+  }
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((p) => (typeof p === "number" ? p : parseInt(String(p).trim(), 10)))
+          .filter((p) => !isNaN(p));
+      }
+    } catch {
+      // Fallback a separación por delimitadores comunes
+    }
+    return trimmed
+      .replace(/[\[\]]/g, "")
+      .split(/[,\s]+/)
+      .map((p) => parseInt(p.trim(), 10))
+      .filter((p) => !isNaN(p));
+  }
+  return [];
+}
 
 export async function POST(
   req: NextRequest,
@@ -80,15 +110,110 @@ export async function POST(
   }
 
   const eventType =
-    (req.headers.get("x-nexus-event") as string) ||
     (payload.event as string) ||
+    (req.headers.get("x-nexus-event") as string) ||
     "inbound.event";
-
-  let actionResult = "Evento procesado";
 
   // 6. Ejecutar Acciones según el tipo de evento
   try {
-    if (eventType === "service.status" || eventType === "healthcheck") {
+    const isTelemetryHeartbeat =
+      (payload.event === "service.status" ||
+        payload.event === "infra.heartbeat" ||
+        eventType === "service.status" ||
+        eventType === "infra.heartbeat") &&
+      Boolean(payload.node || payload.node_name || payload.nodeName);
+
+    if (isTelemetryHeartbeat) {
+      const nodeName = String(
+        payload.node || payload.node_name || payload.nodeName
+      ).trim();
+      const nodeStatusRaw = String(payload.status || "").toLowerCase();
+      const rawPorts = payload.listening_ports ?? payload.listeningPorts ?? payload.ports;
+      const listeningPorts = parseListeningPorts(rawPorts);
+      const listeningSet = new Set(listeningPorts);
+
+      // Buscar nodo en la base de datos
+      const targetNode = await db.query.nodes.findFirst({
+        where: eq(nodes.name, nodeName),
+      });
+
+      if (!targetNode) {
+        const errorMsg = `Nodo "${nodeName}" no encontrado en el inventario de infraestructura.`;
+        await db.insert(webhookDeliveries).values({
+          endpointId: endpoint.id,
+          eventType,
+          payload,
+          statusCode: 404,
+          responseBody: errorMsg,
+          status: "failed",
+        });
+
+        return NextResponse.json({ error: errorMsg }, { status: 404 });
+      }
+
+      // Actualizar estado del nodo y timestamp de latido táctico
+      const updatedNodeStatus =
+        nodeStatusRaw === "running" || nodeStatusRaw === "online"
+          ? "online"
+          : nodeStatusRaw === "offline" || nodeStatusRaw === "stopped"
+          ? "offline"
+          : targetNode.status;
+
+      await db
+        .update(nodes)
+        .set({
+          status: updatedNodeStatus,
+          last_heartbeat: new Date(),
+        })
+        .where(eq(nodes.id, targetNode.id));
+
+      // Conciliación de la Matriz de Puertos
+      const nodeServices = await db
+        .select()
+        .from(projectServices)
+        .where(eq(projectServices.nodeId, targetNode.id));
+
+      for (const svc of nodeServices) {
+        const nextStatus = listeningSet.has(svc.port) ? "running" : "stopped";
+        if (svc.status !== nextStatus) {
+          await db
+            .update(projectServices)
+            .set({ status: nextStatus })
+            .where(eq(projectServices.id, svc.id));
+        }
+      }
+
+      // Revalidación de rutas en caché de Next.js
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/nodes");
+      revalidatePath("/dashboard/ports");
+
+      const successData = {
+        success: true,
+        message: "Telemetría y puertos conciliados con éxito",
+        node: nodeName,
+        updated_ports: nodeServices.length,
+      };
+
+      // Registrar auditoría exitosa
+      await db.insert(webhookDeliveries).values({
+        endpointId: endpoint.id,
+        eventType,
+        payload,
+        statusCode: 200,
+        responseBody: JSON.stringify(successData),
+        status: "success",
+      });
+
+      return NextResponse.json(successData);
+    }
+
+    let actionResult = "Evento procesado";
+
+    if (
+      (eventType === "service.status" || eventType === "healthcheck") &&
+      (payload.serviceId || payload.service_id)
+    ) {
       const serviceId = (payload.serviceId as string) || (payload.service_id as string);
       const newStatus = payload.status as "running" | "stopped" | "failed";
 
@@ -98,6 +223,8 @@ export async function POST(
           .set({ status: newStatus })
           .where(eq(projectServices.id, serviceId));
         actionResult = `Servicio ${serviceId} actualizado a ${newStatus}`;
+        revalidatePath("/dashboard");
+        revalidatePath("/dashboard/ports");
       }
     } else if (eventType === "devlog.entry") {
       const projectId = (payload.projectId as string) || (payload.project_id as string);
@@ -111,10 +238,11 @@ export async function POST(
           markdownContent,
         });
         actionResult = `Bitácora agregada para proyecto ${projectId}`;
+        revalidatePath("/dashboard");
       }
     }
 
-    // 7. Registrar Entrega Exitosa en Auditoría
+    // Registrar Entrega en Auditoría
     await db.insert(webhookDeliveries).values({
       endpointId: endpoint.id,
       eventType,

@@ -60,6 +60,7 @@ export const nodes = pgTable("nodes", {
   role: nodeRoleEnum("role").default("app").notNull(),
   provider: nodeProviderEnum("provider").default("hetzner").notNull(),
   status: nodeStatusEnum("status").default("online").notNull(),
+  last_heartbeat: timestamp("last_heartbeat"),
 });
 
 // 4. Project Services (Puertos y procesos vinculados a nodos)
