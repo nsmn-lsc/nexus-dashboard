@@ -14,19 +14,34 @@ export default async function DashboardLayout({
 
   return (
     <div className="relative flex flex-col min-h-screen bg-[#070b12] text-slate-200">
-      {/* Fondo Ambiental Táctico Cyberpunk Visible */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <Image
-          src="/nexus-login-hero.jpg"
-          alt="Nexus Ambient HUD Background"
-          fill
-          className="object-cover opacity-35 filter brightness-75 contrast-125 select-none"
-          priority
-        />
-        {/* Overlay con degradado táctico que permite apreciar el centro de mando */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#070b12]/80 via-[#070b12]/70 to-[#070b12]/85" />
-        {/* Malla HUD sutil */}
-        <div className="absolute inset-0 hud-grid opacity-40" />
+      {/* Fondo Ambiental Táctico Cyberpunk Vivo */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none" aria-hidden="true">
+        <div className="absolute inset-0 nx-kenburns opacity-35 filter brightness-75 contrast-125">
+          <Image
+            src="/nexus-login-hero.jpg"
+            alt="Nexus Ambient HUD Background"
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+
+        {/* Auroras cibernéticas lejanas y atmosféricas */}
+        <div className="absolute -top-1/4 -left-1/4 w-[50vw] h-[50vw] rounded-full bg-hud-cyan/[0.08] blur-[140px] nx-aurora pointer-events-none" />
+        <div className="absolute -bottom-1/4 -right-1/4 w-[50vw] h-[50vw] rounded-full bg-hud-magenta/[0.06] blur-[150px] nx-aurora-slow pointer-events-none" />
+
+        {/* Piso de cuadrícula en perspectiva inferior */}
+        <div className="absolute left-[-50%] right-[-50%] bottom-[-15%] h-[40%] nx-floor opacity-25" />
+
+        {/* Overlay con degradado táctico oscuro para mantener legibilidad 100% nítida */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#070b12]/90 via-[#070b12]/80 to-[#070b12]/95" />
+
+        {/* Barrido de escaneo táctico lento */}
+        <div className="absolute inset-x-0 top-0 h-28 nx-scan bg-gradient-to-b from-transparent via-hud-cyan/[0.04] to-transparent" />
+
+        {/* Malla HUD + scanlines CRT sutiles */}
+        <div className="absolute inset-0 hud-grid opacity-30" />
+        <div className="absolute inset-0 nx-scanlines opacity-40" />
       </div>
 
       {/* Header Táctico con transparencia para apreciar el fondo */}

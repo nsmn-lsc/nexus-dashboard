@@ -4,9 +4,11 @@ import { projects, nodes, projectServices, tasks } from "@/db/schema";
 import { HudCard } from "@/components/hud/HudCard";
 import { HudBadge } from "@/components/hud/HudBadge";
 import { HudButton } from "@/components/hud/HudButton";
-import { Server, Network, FolderKanban, ListTodo, Shield, ExternalLink } from "lucide-react";
+import { Server, Network, FolderKanban, ListTodo, Shield, ExternalLink, Activity, Radio } from "lucide-react";
 import Link from "next/link";
 import { CreateProjectModal } from "@/components/hud/CreateProjectModal";
+import { ScrambleNumber } from "@/components/hud/ScrambleNumber";
+import { HudSparkline } from "@/components/hud/HudSparkline";
 
 export default async function DashboardPage() {
   // Carga de telemetría directamente del modelo relacional desacoplado
@@ -15,11 +17,23 @@ export default async function DashboardPage() {
   const allServices = await db.select().from(projectServices);
   const allTasks = await db.select().from(tasks);
 
+  const onlineNodes = allNodes.filter((n) => n.status === "online").length;
+  const runningServices = allServices.filter((s) => s.status === "running").length;
+
   return (
     <div className="space-y-6">
       {/* Banner Superior Táctico */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-panel-border/30 pb-4">
-        <div>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="relative flex w-2 h-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-hud-green opacity-75 animate-ping" />
+              <span className="relative inline-flex rounded-full w-2 h-2 bg-hud-green" />
+            </span>
+            <span className="font-mono text-[10px] text-hud-cyan tracking-[0.25em] uppercase font-semibold">
+              TELEMETRÍA EN VIVO // CENTRO DE MANDO HETZNER
+            </span>
+          </div>
           <h1 className="text-3xl font-bold font-rajdhani tracking-wide text-white flex items-center gap-2">
             PANEL DE OPERACIONES // ESTADO GLOBAL
           </h1>
@@ -27,66 +41,101 @@ export default async function DashboardPage() {
             Telemetría de nodos Hetzner, puertos asignados y proyectos en ejecución.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <CreateProjectModal />
-          <HudBadge variant="cyan">NODOS HETZNER: {allNodes.length}</HudBadge>
+          <HudBadge variant="cyan">
+            NODOS: {onlineNodes}/{allNodes.length}
+          </HudBadge>
           <HudBadge variant="green" pulse>
-            SERVICIOS ACTIVOS: {allServices.length}
+            SERVICIOS: {runningServices}/{allServices.length}
           </HudBadge>
         </div>
       </div>
 
-      {/* Grid de Métricas HUD */}
+      {/* Grid de Métricas HUD con Telemetría Animada */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <HudCard>
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-mono text-xs uppercase tracking-wider">Proyectos</span>
+        {/* Tarjeta 1: Proyectos */}
+        <HudCard className="space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="font-mono text-[11px] uppercase tracking-wider">Proyectos Core</span>
             <FolderKanban className="w-4 h-4 text-hud-cyan" />
           </div>
-          <div className="text-3xl font-bold font-rajdhani text-white">
-            {allProjects.length.toString().padStart(2, "0")}
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-bold font-rajdhani text-white">
+              <ScrambleNumber value={allProjects.length} />
+            </div>
+            <span className="font-mono text-[10px] text-hud-cyan border border-hud-cyan/30 px-1.5 py-0.5 bg-hud-cyan/10">
+              ACTIVOS
+            </span>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 mt-2">
-            100% REGISTRADOS EN CORE
+          <HudSparkline color="cyan" />
+          <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-panel-border/20 pt-1.5">
+            <span>REGISTRO EN CORE</span>
+            <span className="text-hud-cyan">100% ENLACE</span>
           </div>
         </HudCard>
 
-        <HudCard>
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-mono text-xs uppercase tracking-wider">Infraestructura Nodos</span>
+        {/* Tarjeta 2: Nodos de Infraestructura */}
+        <HudCard className="space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="font-mono text-[11px] uppercase tracking-wider">Infraestructura Nodos</span>
             <Server className="w-4 h-4 text-hud-green" />
           </div>
-          <div className="text-3xl font-bold font-rajdhani text-white">
-            {allNodes.length.toString().padStart(2, "0")}
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-bold font-rajdhani text-white">
+              <ScrambleNumber value={allNodes.length} />
+            </div>
+            <span className="font-mono text-[10px] text-hud-green border border-hud-green/30 px-1.5 py-0.5 bg-hud-green/10 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-hud-green animate-pulse" />
+              {onlineNodes} ONLINE
+            </span>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 mt-2">
-            PROVEEDOR: HETZNER / LOCAL
+          <HudSparkline color="green" />
+          <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-panel-border/20 pt-1.5">
+            <span>PROVEEDOR</span>
+            <span className="text-hud-green">HETZNER / LOCAL</span>
           </div>
         </HudCard>
 
-        <HudCard>
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-mono text-xs uppercase tracking-wider">Puertos Mapeados</span>
+        {/* Tarjeta 3: Puertos Mapeados */}
+        <HudCard className="space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="font-mono text-[11px] uppercase tracking-wider">Puertos Mapeados</span>
             <Network className="w-4 h-4 text-hud-yellow" />
           </div>
-          <div className="text-3xl font-bold font-rajdhani text-white">
-            {allServices.length.toString().padStart(2, "0")}
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-bold font-rajdhani text-white">
+              <ScrambleNumber value={allServices.length} />
+            </div>
+            <span className="font-mono text-[10px] text-hud-yellow border border-hud-yellow/30 px-1.5 py-0.5 bg-hud-yellow/10">
+              {runningServices} EN ESCUCHA
+            </span>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 mt-2">
-            PROTOCOLOS: TCP / HTTP / HTTPS
+          <HudSparkline color="yellow" />
+          <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-panel-border/20 pt-1.5">
+            <span>PROTOCOLOS</span>
+            <span className="text-hud-yellow">TCP / HTTP / SSL</span>
           </div>
         </HudCard>
 
-        <HudCard>
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-mono text-xs uppercase tracking-wider">Tareas en Backlog</span>
+        {/* Tarjeta 4: Tareas en Backlog */}
+        <HudCard className="space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="font-mono text-[11px] uppercase tracking-wider">Tareas en Backlog</span>
             <ListTodo className="w-4 h-4 text-hud-magenta" />
           </div>
-          <div className="text-3xl font-bold font-rajdhani text-white">
-            {allTasks.length.toString().padStart(2, "0")}
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-bold font-rajdhani text-white">
+              <ScrambleNumber value={allTasks.length} />
+            </div>
+            <span className="font-mono text-[10px] text-hud-magenta border border-hud-magenta/30 px-1.5 py-0.5 bg-hud-magenta/10">
+              SPRINT 1
+            </span>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 mt-2">
-            SPRINT 1 EN EJECUCIÓN
+          <HudSparkline color="magenta" />
+          <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-panel-border/20 pt-1.5">
+            <span>PLANIFICACIÓN</span>
+            <span className="text-hud-magenta">EN EJECUCIÓN</span>
           </div>
         </HudCard>
       </div>
