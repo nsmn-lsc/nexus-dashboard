@@ -21,3 +21,126 @@ body {
     linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
 }
+
+/* -------------------------------------------------------------------------- */
+/* LOGIN // Efectos premium (CSS puro, sin dependencias)                      */
+/* -------------------------------------------------------------------------- */
+@keyframes nx-kenburns {
+  0% { transform: scale(1.08) translate3d(0, 0, 0); }
+  100% { transform: scale(1.18) translate3d(-2%, -1.5%, 0); }
+}
+@keyframes nx-aurora {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(6%, -4%, 0) scale(1.1); }
+  66% { transform: translate3d(-5%, 5%, 0) scale(0.95); }
+}
+@keyframes nx-grid-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 60px; }
+}
+@keyframes nx-scan {
+  0% { transform: translateY(-20vh); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(120vh); opacity: 0; }
+}
+@keyframes nx-spin { to { transform: rotate(360deg); } }
+@keyframes nx-shimmer {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes nx-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes nx-fade-up {
+  from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes nx-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes nx-ekg {
+  from { stroke-dashoffset: 600; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes nx-blink { 50% { opacity: 0; } }
+@keyframes nx-glitch {
+  0%, 92%, 100% { text-shadow: 0 0 18px rgba(0, 243, 255, 0.35); transform: translate(0); }
+  93% { text-shadow: -2px 0 #ff0055, 2px 0 #00f3ff; transform: translate(1px, 0); }
+  95% { text-shadow: 2px 0 #ff0055, -2px 0 #00f3ff; transform: translate(-1px, 0); }
+  97% { text-shadow: 0 0 18px rgba(0, 243, 255, 0.35); transform: translate(0); }
+}
+@keyframes nx-granted {
+  0% { clip-path: inset(50% 0 50% 0); opacity: 0; }
+  100% { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+
+.nx-kenburns { animation: nx-kenburns 40s ease-in-out infinite alternate; }
+.nx-aurora { animation: nx-aurora 22s ease-in-out infinite; }
+.nx-aurora-slow { animation: nx-aurora 30s ease-in-out infinite reverse; }
+.nx-scan { animation: nx-scan 8s linear infinite; }
+.nx-spin-slow { animation: nx-spin 6s linear infinite; }
+.nx-shake { animation: nx-shake 0.45s ease-in-out; }
+.nx-fade-up { animation: nx-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.nx-marquee { animation: nx-marquee 40s linear infinite; }
+.nx-blink { animation: nx-blink 1s steps(1) infinite; }
+.nx-glitch { animation: nx-glitch 6s infinite; }
+.nx-granted { animation: nx-granted 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.nx-ekg {
+  stroke-dasharray: 600;
+  animation: nx-ekg 3.2s linear infinite;
+}
+
+/* Piso de rejilla en perspectiva */
+.nx-floor {
+  background-image:
+    linear-gradient(to right, rgba(0, 243, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 243, 255, 0.18) 1px, transparent 1px);
+  background-size: 60px 60px;
+  transform: perspective(500px) rotateX(62deg);
+  transform-origin: center top;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 35%, black 70%, transparent 100%);
+  animation: nx-grid-scroll 3s linear infinite;
+}
+
+/* Scanlines CRT finas */
+.nx-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Brillo deslizante para botones */
+.nx-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: nx-shimmer 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.nx-clip {
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+.nx-clip-sm {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-kenburns, .nx-aurora, .nx-aurora-slow, .nx-scan, .nx-spin-slow, .nx-floor,
+  .nx-marquee, .nx-glitch, .nx-ekg, .nx-shimmer::after, .nx-fade-up {
+    animation: none !important;
+  }
+}
